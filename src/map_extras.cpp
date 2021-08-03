@@ -147,6 +147,7 @@ static const mtype_id mon_turret_bmg( "mon_turret_bmg" );
 static const mtype_id mon_turret_searchlight( "mon_turret_searchlight" );
 static const mtype_id mon_turret_rifle( "mon_turret_rifle" );
 static const mtype_id mon_turret_riot( "mon_turret_riot" );
+static const mtype_id mon_turret_riot("mon_turret_labs");
 static const mtype_id mon_turret_speaker( "mon_turret_speaker" );
 static const mtype_id mon_wolf( "mon_wolf" );
 static const mtype_id mon_zombie_bio_op( "mon_zombie_bio_op" );
