@@ -446,9 +446,9 @@ void remove_radio_mod( item &it, Character &p )
 }
 
 // Checks that the player can smoke
-cata::optional<std::string> iuse::can_smoke( const player &u )
+cata::optional<std::string> iuse::can_smoke( const Character &you )
 {
-    auto cigs = u.items_with( []( const item & it ) {
+    auto cigs = you.items_with( []( const item & it ) {
         return it.active && it.has_flag( flag_LITCIG );
     } );
 
@@ -456,7 +456,7 @@ cata::optional<std::string> iuse::can_smoke( const player &u )
         return string_format( _( "You're already smoking a %s!" ), cigs[0]->tname() );
     }
 
-    if( !u.has_charges( itype_fire, 1 ) ) {
+    if( !you.has_charges( itype_fire, 1 ) ) {
         return _( "You don't have anything to light it with!" );
     }
     return cata::nullopt;
@@ -2095,6 +2095,8 @@ cata::optional<int> iuse::unpack_item( player *p, item *it, bool, const tripoint
     p->moves -= to_moves<int>( 10_seconds );
     p->add_msg_if_player( _( "You unpack your %s for use." ), it->tname() );
     it->convert( itype_id( oname ) ).active = false;
+    // Check if unpacking led to invalid container state
+    p->invalidate_inventory_validity_cache();
     return 0;
 }
 
@@ -2251,8 +2253,7 @@ cata::optional<int> iuse::directional_antenna( player *p, item *it, bool, const 
         return cata::nullopt;
     }
     // Report direction.
-    // TODO: fix point types
-    const tripoint_abs_sm player_pos( p->global_sm_location() );
+    const tripoint_abs_sm player_pos = p->global_sm_location();
     direction angle = direction_from( player_pos.xy(), tref.abs_sm_pos );
     add_msg( _( "The signal seems strongest to the %s." ), direction_name( angle ) );
     return it->type->charges_to_use();
@@ -5799,7 +5800,7 @@ cata::optional<int> iuse::gunmod_attach( player *p, item *it, bool, const tripoi
     }
 
     do {
-        item_location loc = game_menus::inv::gun_to_modify( *p, *it );
+        item_location loc = game_menus::inv::gun_to_modify( *p->as_character(), *it );
 
         if( !loc ) {
             add_msg( m_info, _( "Never mind." ) );
@@ -9076,7 +9077,7 @@ cata::optional<int> iuse::cable_attach( player *p, item *it, bool, const tripoin
             point vcoords = source_vp->mount();
             vehicle_part source_part( vpid, "", vcoords, item( *it ) );
             source_part.target.first = target_global;
-            source_part.target.second = here.getabs( target_veh->global_pos3() );
+            source_part.target.second = target_veh->global_square_location().raw();
             source_veh->install_part( vcoords, source_part );
 
             vcoords = target_vp->mount();
@@ -9085,7 +9086,7 @@ cata::optional<int> iuse::cable_attach( player *p, item *it, bool, const tripoin
                                     it->get_var( "source_y", 0 ),
                                     it->get_var( "source_z", 0 ) );
             target_part.target.first = source_global;
-            target_part.target.second = here.getabs( source_veh->global_pos3() );
+            target_part.target.second = source_veh->global_square_location().raw();
             target_veh->install_part( vcoords, target_part );
 
             if( p != nullptr && p->has_item( *it ) ) {
@@ -9278,7 +9279,7 @@ bool item::release_monster( const tripoint &target, const int radius )
 {
     shared_ptr_fast<monster> new_monster = make_shared_fast<monster>();
     try {
-        ::deserialize( *new_monster, get_var( "contained_json", "" ) );
+        ::deserialize_from_string( *new_monster, get_var( "contained_json", "" ) );
     } catch( const std::exception &e ) {
         debugmsg( _( "Error restoring monster: %s" ), e.what() );
         return false;
@@ -9651,25 +9652,34 @@ cata::optional<int> iuse::strong_antibiotic( player *p, item *it, bool, const tr
     return it->type->charges_to_use();
 }
 
+static item *wield_before_use( player *const p, item *const it, const std::string &msg )
+{
+    if( !p->is_wielding( *it ) ) {
+        if( !p->is_armed() || query_yn( msg.c_str(), it->tname() ) ) {
+            if( !p->wield( *it ) ) {
+                // Will likely happen if it is too heavy, or the player is
+                // wielding something that can't be unwielded
+                add_msg( m_bad, "%s", p->can_wield( *it ).str() );
+                return nullptr;
+            }
+            // `it` is no longer the item we are using (note that `player::wielded` is a value).
+            return &p->weapon;
+        } else {
+            return nullptr;
+        }
+    }
+    return it;
+}
+
 cata::optional<int> iuse::craft( player *p, item *it, bool, const tripoint & )
 {
     if( p->is_mounted() ) {
         p->add_msg_if_player( m_info, _( "You can't do that while mounted." ) );
         return cata::nullopt;
     }
-    if( !p->is_wielding( *it ) ) {
-        if( !p->is_armed() || query_yn( _( "Wield the %s and start working?" ), it->tname() ) )  {
-            if( !p->wield( *it ) ) {
-                // Will likely happen if the in progress craft is too heavy, or the player is
-                // wielding something that can't be unwielded
-                add_msg( m_bad, "%s", p->can_wield( *it ).c_str() );
-                return cata::nullopt;
-            }
-            // `it` is no longer the item we are using (note that `player::wielded` is a value).
-            it = &p->weapon;
-        } else {
-            return cata::nullopt;
-        }
+    it = wield_before_use( p, it, _( "Wield the %s and start working?" ) );
+    if( !it ) {
+        return cata::nullopt;
     }
 
     const std::string craft_name = it->tname();
@@ -9704,6 +9714,10 @@ cata::optional<int> iuse::disassemble( player *p, item *it, bool, const tripoint
 {
     if( p->is_mounted() ) {
         p->add_msg_if_player( m_info, _( "You can't do that while mounted." ) );
+        return cata::nullopt;
+    }
+    it = wield_before_use( p, it, _( "Wield the %s and start working?" ) );
+    if( !it ) {
         return cata::nullopt;
     }
     if( !p->has_item( *it ) ) {

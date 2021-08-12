@@ -152,7 +152,7 @@ void map::generate( const tripoint &p, const time_point &when )
         if( extra == nullptr ) {
             debugmsg( "failed to pick extra for type %s", terrain_type->get_extras() );
         } else {
-            MapExtras::apply_function( *( ex.values.pick() ), *this, abs_sub );
+            MapExtras::apply_function( *( ex.values.pick() ), *this, tripoint_abs_sm( abs_sub ) );
         }
     }
 
@@ -1226,6 +1226,9 @@ class jmapgen_faction : public jmapgen_piece
                 id = faction_id( jsi.get_string( "id" ) );
             }
         }
+        int phase() const override {
+            return 2;
+        }
         void apply( const mapgendata &dat, const jmapgen_int &x, const jmapgen_int &y
                   ) const override {
             dat.m.apply_faction_ownership( point( x.val, y.val ), point( x.valmax, y.valmax ), id );
@@ -1844,6 +1847,9 @@ class jmapgen_furniture : public jmapgen_piece
         jmapgen_furniture( const JsonObject &jsi, const std::string &/*context*/ ) :
             jmapgen_furniture( jsi.get_member( "furn" ) ) {}
         explicit jmapgen_furniture( const JsonValue &fid ) : id( furn_id( fid.get_string() ) ) {}
+        int phase() const override {
+            return -1;
+        }
         void apply( const mapgendata &dat, const jmapgen_int &x, const jmapgen_int &y
                   ) const override {
             dat.m.furn_set( point( x.get(), y.get() ), id );
@@ -1866,6 +1872,9 @@ class jmapgen_terrain : public jmapgen_piece
 
         bool is_nop() const override {
             return id.is_null();
+        }
+        int phase() const override {
+            return -2;
         }
 
         void apply( const mapgendata &dat, const jmapgen_int &x, const jmapgen_int &y
@@ -2137,6 +2146,9 @@ class jmapgen_translate : public jmapgen_piece
                 to = ter_id( to_id );
             }
         }
+        int phase() const override {
+            return 2;
+        }
         void apply( const mapgendata &dat, const jmapgen_int &/*x*/,
                     const jmapgen_int &/*y*/ ) const override {
             dat.m.translate( from, to );
@@ -2244,6 +2256,9 @@ class jmapgen_nested : public jmapgen_piece
             if( jsi.has_member( "else_chunks" ) ) {
                 load_weighted_list( jsi.get_member( "else_chunks" ), else_entries, 100 );
             }
+        }
+        int phase() const override {
+            return 1;
         }
         void apply( const mapgendata &dat, const jmapgen_int &x, const jmapgen_int &y
                   ) const override {
@@ -2886,6 +2901,9 @@ bool mapgen_function_json_base::setup_common( const JsonObject &jo )
     objects.load_objects<jmapgen_ter_furn_transform>( jo, "place_ter_furn_transforms", context_ );
     // Needs to be last as it affects other placed items
     objects.load_objects<jmapgen_faction>( jo, "faction_owner", context_ );
+
+    objects.finalize();
+
     if( !mapgen_defer::defer ) {
         is_ready = true; // skip setup attempts from any additional pointers
     }
@@ -2931,6 +2949,14 @@ void mapgen_function_json_base::check_common() const
     }
 
     objects.check( context_, parameters );
+}
+
+void jmapgen_objects::finalize()
+{
+    std::stable_sort( objects.begin(), objects.end(),
+    []( const jmapgen_obj & l, const jmapgen_obj & r ) {
+        return l.second->phase() < r.second->phase();
+    } );
 }
 
 void jmapgen_objects::check( const std::string &context, const mapgen_parameters &parameters ) const
@@ -5211,7 +5237,7 @@ character_id map::place_npc( const point &p, const string_id<npc_template> &type
     shared_ptr_fast<npc> temp = make_shared_fast<npc>();
     temp->normalize();
     temp->load_npc_template( type );
-    temp->spawn_at_precise( { abs_sub.xy() }, { p, abs_sub.z } );
+    temp->spawn_at_precise( tripoint_abs_ms( getabs( tripoint( p, abs_sub.z ) ) ) );
     temp->toggle_trait( trait_NPC_STATIC_NPC );
     overmap_buffer.insert_npc( temp );
     return temp->getID();
@@ -5573,7 +5599,7 @@ void map::rotate( int turns, const bool setpos_safe )
         if( skip_npc_rotation() ) {
             break;
         }
-        const tripoint sq = np.global_square_location();
+        const tripoint sq = np.global_square_location().raw();
         real_coords np_rc;
         np_rc.fromabs( sq.xy() );
         // Note: We are rotating the entire overmap square (2x2 of submaps)
@@ -5593,7 +5619,7 @@ void map::rotate( int turns, const bool setpos_safe )
             old.y += SEEY;
         }
 
-        const point new_pos = old .rotate( turns, { SEEX * 2, SEEY * 2 } );
+        const point new_pos = old.rotate( turns, { SEEX * 2, SEEY * 2 } );
         if( setpos_safe ) {
             const point local_sq = getlocal( sq ).xy();
             // setpos can't be used during mapgen, but spawn_at_precise clips position
@@ -5606,7 +5632,7 @@ void map::rotate( int turns, const bool setpos_safe )
             // Then we place it back from scratch
             // It could be rewritten to utilize the fact that rotation shouldn't cross overmaps
             shared_ptr_fast<npc> npc_ptr = overmap_buffer.remove_npc( np.getID() );
-            np.spawn_at_precise( { abs_sub.xy() }, { new_pos, abs_sub.z } );
+            np.spawn_at_precise( tripoint_abs_ms( getabs( tripoint( new_pos, abs_sub.z ) ) ) );
             overmap_buffer.insert_npc( npc_ptr );
         }
     }

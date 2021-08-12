@@ -19,6 +19,7 @@
 #include "activity_handlers.h"
 #include "anatomy.h"
 #include "avatar.h"
+#include "avatar_action.h"
 #include "bionics.h"
 #include "cached_options.h"
 #include "cata_utility.h"
@@ -245,11 +246,13 @@ static const trait_id trait_ADRENALINE( "ADRENALINE" );
 static const trait_id trait_ANTENNAE( "ANTENNAE" );
 static const trait_id trait_ANTLERS( "ANTLERS" );
 static const trait_id trait_BADBACK( "BADBACK" );
+static const trait_id trait_CENOBITE( "CENOBITE" );
 static const trait_id trait_CF_HAIR( "CF_HAIR" );
 static const trait_id trait_CHITIN_FUR( "CHITIN_FUR" );
 static const trait_id trait_CHITIN_FUR2( "CHITIN_FUR2" );
 static const trait_id trait_CHITIN_FUR3( "CHITIN_FUR3" );
 static const trait_id trait_CLUMSY( "CLUMSY" );
+static const trait_id trait_DEBUG_HS( "DEBUG_HS" );
 static const trait_id trait_DEBUG_NODMG( "DEBUG_NODMG" );
 static const trait_id trait_DEFT( "DEFT" );
 static const trait_id trait_EATHEALTH( "EATHEALTH" );
@@ -259,6 +262,7 @@ static const trait_id trait_FUR( "FUR" );
 static const trait_id trait_ILLITERATE( "ILLITERATE" );
 static const trait_id trait_INFIMMUNE( "INFIMMUNE" );
 static const trait_id trait_INSOMNIA( "INSOMNIA" );
+static const trait_id trait_INT_SLIME( "INT_SLIME" );
 static const trait_id trait_LIGHTFUR( "LIGHTFUR" );
 static const trait_id trait_LUPINE_FUR( "LUPINE_FUR" );
 static const trait_id trait_PACIFIST( "PACIFIST" );
@@ -268,6 +272,7 @@ static const trait_id trait_QUILLS( "QUILLS" );
 static const trait_id trait_SAVANT( "SAVANT" );
 static const trait_id trait_SPINES( "SPINES" );
 static const trait_id trait_SQUEAMISH( "SQUEAMISH" );
+static const trait_id trait_SUNLIGHT_DEPENDENT( "SUNLIGHT_DEPENDENT" );
 static const trait_id trait_THORNS( "THORNS" );
 static const trait_id trait_URSINE_FUR( "URSINE_FUR" );
 static const trait_id trait_WOOLALLERGY( "WOOLALLERGY" );
@@ -305,7 +310,6 @@ static const trait_id trait_DOWN( "DOWN" );
 static const trait_id trait_ELECTRORECEPTORS( "ELECTRORECEPTORS" );
 static const trait_id trait_ELFA_FNV( "ELFA_FNV" );
 static const trait_id trait_ELFA_NV( "ELFA_NV" );
-static const trait_id trait_FAST_REFLEXES( "FAST_REFLEXES" );
 static const trait_id trait_FEL_NV( "FEL_NV" );
 static const trait_id trait_GILLS( "GILLS" );
 static const trait_id trait_GILLS_CEPH( "GILLS_CEPH" );
@@ -324,6 +328,9 @@ static const trait_id trait_LIGHTSTEP( "LIGHTSTEP" );
 static const trait_id trait_M_DEPENDENT( "M_DEPENDENT" );
 static const trait_id trait_M_IMMUNE( "M_IMMUNE" );
 static const trait_id trait_M_SKIN3( "M_SKIN3" );
+static const trait_id trait_MORE_PAIN( "MORE_PAIN" );
+static const trait_id trait_MORE_PAIN2( "MORE_PAIN2" );
+static const trait_id trait_MORE_PAIN3( "MORE_PAIN3" );
 static const trait_id trait_MYOPIC( "MYOPIC" );
 static const trait_id trait_NIGHTVISION( "NIGHTVISION" );
 static const trait_id trait_NIGHTVISION2( "NIGHTVISION2" );
@@ -333,6 +340,9 @@ static const trait_id trait_NOMAD2( "NOMAD2" );
 static const trait_id trait_NOMAD3( "NOMAD3" );
 static const trait_id trait_NOPAIN( "NOPAIN" );
 static const trait_id trait_PADDED_FEET( "PADDED_FEET" );
+static const trait_id trait_PAINRESIST( "PAINRESIST" );
+static const trait_id trait_PAINRESIST_TROGLO( "PAINRESIST_TROGLO" );
+static const trait_id trait_PARKOUR( "PARKOUR" );
 static const trait_id trait_PAWS( "PAWS" );
 static const trait_id trait_PAWS_LARGE( "PAWS_LARGE" );
 static const trait_id trait_PER_SLIME( "PER_SLIME" );
@@ -371,7 +381,6 @@ static const json_character_flag json_flag_ALARMCLOCK( "ALARMCLOCK" );
 static const json_character_flag json_flag_ACID_IMMUNE( "ACID_IMMUNE" );
 static const json_character_flag json_flag_BASH_IMMUNE( "BASH_IMMUNE" );
 static const json_character_flag json_flag_BIO_IMMUNE( "BIO_IMMUNE" );
-static const json_character_flag json_flag_BIONIC_TOGGLED( "BIONIC_TOGGLED" );
 static const json_character_flag json_flag_BLIND( "BLIND" );
 static const json_character_flag json_flag_BULLET_IMMUNE( "BULLET_IMMUNE" );
 static const json_character_flag json_flag_CLAIRVOYANCE( "CLAIRVOYANCE" );
@@ -383,6 +392,7 @@ static const json_character_flag json_flag_DEAF( "DEAF" );
 static const json_character_flag json_flag_ELECTRIC_IMMUNE( "ELECTRIC_IMMUNE" );
 static const json_character_flag json_flag_ENHANCED_VISION( "ENHANCED_VISION" );
 static const json_character_flag json_flag_EYE_MEMBRANE( "EYE_MEMBRANE" );
+static const json_character_flag json_flag_FEATHER_FALL( "FEATHER_FALL" );
 static const json_character_flag json_flag_HEATPROOF( "HEATPROOF" );
 static const json_character_flag json_flag_HEATSINK( "HEATSINK" );
 static const json_character_flag json_flag_IMMUNE_HEARING_DAMAGE( "IMMUNE_HEARING_DAMAGE" );
@@ -787,11 +797,6 @@ double Character::aim_per_move( const item &gun, double recoil ) const
     return std::min( aim_speed, recoil - limit );
 }
 
-const tripoint &Character::pos() const
-{
-    return position;
-}
-
 int Character::sight_range( int light_level ) const
 {
     if( light_level == 0 ) {
@@ -1029,7 +1034,8 @@ int Character::swim_speed() const
 
 bool Character::is_on_ground() const
 {
-    return get_working_leg_count() < 2 || has_effect( effect_downed );
+    return ( ( get_working_leg_count() < 2 && !weapon.has_flag( flag_CRUTCHES ) ) ) ||
+           has_effect( effect_downed ) || is_prone();
 }
 
 bool Character::can_stash( const item &it )
@@ -1917,6 +1923,11 @@ bool Character::is_crouching() const
     return move_mode->type() == move_mode_type::CROUCHING;
 }
 
+bool Character::is_prone() const
+{
+    return move_mode->type() == move_mode_type::PRONE;
+}
+
 steed_type Character::get_steed_type() const
 {
     steed_type steed;
@@ -2279,16 +2290,21 @@ bool Character::has_any_bionic() const
     return !get_bionics().empty();
 }
 
-std::vector<item> Character::get_pseudo_items() const
+std::vector<const item *> Character::get_pseudo_items() const
 {
-    std::vector<item> result;
-    for( const bionic &bio : *my_bionics ) {
-        const bionic_data &bid = bio.info();
-        if( ( !bid.activated || bio.powered ) && bid.fake_item.is_valid() ) {
-            result.emplace_back( item( bid.fake_item ) );
+    if( !pseudo_items_valid ) {
+        pseudo_items.clear();
+
+        for( const bionic &bio : *my_bionics ) {
+            std::vector<const item *> pseudos = bio.get_available_pseudo_items();
+            for( const item *pseudo : pseudos ) {
+                pseudo_items.push_back( pseudo );
+            }
         }
+
+        pseudo_items_valid = true;
     }
-    return result;
+    return pseudo_items;
 }
 
 bionic_id Character::get_remote_fueled_bionic() const
@@ -2902,7 +2918,8 @@ std::pair<item_location, item_pocket *> Character::best_pocket( const item &it, 
     return ret;
 }
 
-item *Character::try_add( item it, const item *avoid, const bool allow_wield )
+item *Character::try_add( item it, const item *avoid, const item *original_inventory_item,
+                          const bool allow_wield )
 {
     invalidate_inventory_validity_cache();
     itype_id item_type_id = it.typeId();
@@ -2930,7 +2947,7 @@ item *Character::try_add( item it, const item *avoid, const bool allow_wield )
         // this will set ret to either it, or to stack where it was placed
         pocket.second->add( it, &ret );
         if( !keep_invlet && ( !it.count_by_charges() || it.charges == ret->charges ) ) {
-            inv->update_invlet( *ret );
+            inv->update_invlet( *ret, true, original_inventory_item );
         }
         pocket.first.on_contents_changed();
         pocket.second->on_contents_changed();
@@ -2944,11 +2961,12 @@ item *Character::try_add( item it, const item *avoid, const bool allow_wield )
     return ret;
 }
 
-item &Character::i_add( item it, bool /* should_stack */, const item *avoid, const bool allow_drop,
+item &Character::i_add( item it, bool /* should_stack */, const item *avoid,
+                        const item *original_inventory_item, const bool allow_drop,
                         const bool allow_wield )
 {
     invalidate_inventory_validity_cache();
-    item *added = try_add( it, avoid, /*allow_wield=*/allow_wield );
+    item *added = try_add( it, avoid, original_inventory_item, allow_wield );
     if( added == nullptr ) {
         if( !allow_wield || !wield( it ) ) {
             if( allow_drop ) {
@@ -3096,7 +3114,8 @@ void Character::i_rem_keep_contents( const item *const it )
     i_rem( it ).spill_contents( pos() );
 }
 
-bool Character::i_add_or_drop( item &it, int qty, const item *avoid )
+bool Character::i_add_or_drop( item &it, int qty, const item *avoid,
+                               const item *original_inventory_item )
 {
     bool retval = true;
     bool drop = it.made_of( phase_id::LIQUID );
@@ -3108,7 +3127,8 @@ bool Character::i_add_or_drop( item &it, int qty, const item *avoid )
         if( drop ) {
             retval &= !here.add_item_or_charges( pos(), it ).is_null();
         } else if( add ) {
-            i_add( it, true, avoid, /*allow_drop=*/true, /*allow_wield=*/!has_wield_conflicts( it ) );
+            i_add( it, true, avoid,
+                   original_inventory_item, /*allow_drop=*/true, /*allow_wield=*/!has_wield_conflicts( it ) );
         }
     }
 
@@ -3579,6 +3599,13 @@ std::vector<item_location> Character::find_reloadables()
         return VisitResponse::NEXT;
     } );
     return reloadables;
+}
+
+void Character::setpos( const tripoint &p )
+{
+    Creature::setpos( p );
+    // In case we've moved out of range of lifting assist.
+    invalidate_weight_carried_cache();
 }
 
 units::mass Character::weight_carried() const
@@ -7719,22 +7746,6 @@ bool Character::made_of_any( const std::set<material_id> &ms ) const
     } );
 }
 
-tripoint Character::global_square_location() const
-{
-    return get_map().getabs( position );
-}
-
-tripoint Character::global_sm_location() const
-{
-    return ms_to_sm_copy( global_square_location() );
-}
-
-tripoint_abs_omt Character::global_omt_location() const
-{
-    // TODO: fix point types
-    return tripoint_abs_omt( ms_to_omt_copy( global_square_location() ) );
-}
-
 bool Character::is_blind() const
 {
     return ( worn_with_flag( flag_BLIND ) ||
@@ -8067,9 +8078,13 @@ std::string Character::extended_description() const
 
     ss += "\n";
     ss += _( "Wearing:" ) + std::string( " " );
-    ss += enumerate_as_string( worn.begin(), worn.end(), []( const item & it ) {
+
+    const std::list<item> visible_worn_items = get_visible_worn_items();
+    std::string worn_string = enumerate_as_string( visible_worn_items.begin(), visible_worn_items.end(),
+    []( const item & it ) {
         return it.tname();
     } );
+    ss += !worn_string.empty() ? worn_string : _( "Nothing" );
 
     return replace_colors( ss );
 }
@@ -8831,6 +8846,12 @@ bool Character::invoke_item( item *used, const std::string &method, const tripoi
                                          "Your %s needs %d charges from some UPS.",
                                          ammo_req ),
                                it_name, ammo_req );
+        } else if( used->has_flag( flag_USES_BIONIC_POWER ) ) {
+            add_msg_if_player( m_info,
+                               ngettext( "Your %s needs %d bionic power.",
+                                         "Your %s needs %d bionic power.",
+                                         ammo_req ),
+                               it_name, ammo_req );
         } else {
             int ammo_rem = used->ammo_remaining();
             add_msg_if_player( m_info,
@@ -8903,7 +8924,7 @@ bool Character::dispose_item( item_location &&obj, const std::string &prompt )
             }
 
             moves -= item_handling_cost( *obj );
-            this->i_add( *obj, true, &*obj );
+            this->i_add( *obj, true, &*obj, &*obj );
             obj.remove_item();
             return true;
         }
@@ -10030,7 +10051,7 @@ void Character::on_hit( Creature *source, bodypart_id bp_hit,
             source->add_effect( effect_blind, 2_turns );
         }
     }
-    if( worn_with_flag( flag_REQUIRES_BALANCE ) && !has_effect( effect_downed ) ) {
+    if( worn_with_flag( flag_REQUIRES_BALANCE ) && !is_on_ground() ) {
         int rolls = 4;
         if( worn_with_flag( flag_ROLLER_ONE ) ) {
             rolls += 2;
@@ -10198,9 +10219,7 @@ dealt_damage_instance Character::deal_damage( Creature *source, bodypart_id bp,
         if( source->has_flag( MF_GRABS ) && !source->is_hallucination() &&
             !source->has_effect( effect_grabbing ) ) {
             /** @EFFECT_DEX increases chance to avoid being grabbed */
-
-            int reflex_mod = has_trait( trait_FAST_REFLEXES ) ? 2 : 1;
-            const bool dodged_grab = rng( 0, reflex_mod * get_dex() ) > rng( 0, 10 );
+            const bool dodged_grab = rng( 0, get_dex() ) > rng( 0, 10 );
 
             if( has_grab_break_tec() && dodged_grab ) {
                 if( has_effect( effect_grabbed ) ) {
@@ -10544,31 +10563,59 @@ bool Character::is_wearing_shoes( const side &which_side ) const
             if( part->limb_type != body_part_type::type::foot ) {
                 continue;
             }
-            if( !left_side && ( part->part_side == side::LEFT || part->part_side == side::BOTH ) ) {
+            if( left_side && ( part->part_side == side::LEFT || part->part_side == side::BOTH ) ) {
                 if( worn_item.covers( part ) && not_exempt( worn_item ) ) {
                     left = shoe_status::has_shoe;
-                } else {
+                } else if( left == shoe_status::no_foot ) {
                     left = shoe_status::no_shoe;
                 }
             }
-            if( !right_side && ( part->part_side == side::RIGHT || part->part_side == side::BOTH ) ) {
+            if( right_side && ( part->part_side == side::RIGHT || part->part_side == side::BOTH ) ) {
                 if( worn_item.covers( part ) && not_exempt( worn_item ) ) {
                     right = shoe_status::has_shoe;
-                } else {
+                } else if( right == shoe_status::no_foot ) {
                     right = shoe_status::no_shoe;
                 }
             }
         }
     }
 
-    if( right == shoe_status::has_shoe && left != shoe_status::no_foot ) {
-        left = shoe_status::has_shoe;
+    if( right_side && left_side ) {
+        return left == shoe_status::has_shoe && right == shoe_status::has_shoe;
+    } else if( right_side ) {
+        return right == shoe_status::has_shoe;
+    } else {
+        return left == shoe_status::has_shoe;
     }
-    if( left == shoe_status::has_shoe && right != shoe_status::no_foot ) {
-        right = shoe_status::has_shoe;
-    }
+}
 
-    return left == shoe_status::has_shoe && right == shoe_status::has_shoe;
+bool Character::is_worn_item_visible( std::list<item>::const_iterator worn_item ) const
+{
+    const body_part_set worn_item_body_parts = worn_item->get_covered_body_parts();
+    return std::any_of( worn_item_body_parts.begin(), worn_item_body_parts.end(),
+    [this, &worn_item]( const bodypart_str_id & bp ) {
+        // no need to check items that are worn under worn_item in the armor sort order
+        for( auto i = std::next( worn_item ), end = worn.end(); i != end; ++i ) {
+            if( i->covers( bp ) && i->get_layer() != layer_level::BELTED &&
+                i->get_layer() != layer_level::WAIST &&
+                i->get_coverage( bp ) >= worn_item->get_coverage( bp ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
+                      );
+}
+
+std::list<item> Character::get_visible_worn_items() const
+{
+    std::list<item> result;
+    for( auto i = worn.cbegin(), end = worn.cend(); i != end; ++i ) {
+        if( is_worn_item_visible( i ) ) {
+            result.push_back( *i );
+        }
+    }
+    return result;
 }
 
 bool Character::is_wearing_helmet() const
@@ -11072,7 +11119,7 @@ void Character::migrate_items_to_storage( bool disintegrate )
 {
     inv->visit_items( [&]( const item * it, item * ) {
         if( disintegrate ) {
-            if( try_add( *it ) == nullptr ) {
+            if( try_add( *it, /*avoid=*/nullptr, it ) == nullptr ) {
                 std::string profession_id = "<none>";
                 if( const player *me = as_player() ) {
                     profession_id = me->prof->ident().str();
@@ -11083,7 +11130,7 @@ void Character::migrate_items_to_storage( bool disintegrate )
                 return VisitResponse::ABORT;
             }
         } else {
-            item &added = i_add( *it, true, /*avoid=*/nullptr,
+            item &added = i_add( *it, true, /*avoid=*/nullptr, it,
                                  /*allow_drop=*/false, /*allow_wield=*/!has_wield_conflicts( *it ) );
             if( added.is_null() ) {
                 put_into_vehicle_or_drop( *this, item_drop_reason::tumbling, { *it } );
@@ -11467,13 +11514,6 @@ std::list<item> Character::use_charges( const itype_id &what, int qty, const int
     if( qty <= 0 ) {
         return res;
     }
-    for( const auto &bio : *this->my_bionics ) {
-        const bionic_data &bid = bio.info();
-        if( bid.fake_item == what && ( !bid.activated || bio.powered ) ) {
-            mod_power_level( units::from_kilojoule( -qty ) );
-            return res;
-        }
-    }
 
     if( what == itype_fire ) {
         use_fire( qty );
@@ -11503,7 +11543,7 @@ std::list<item> Character::use_charges( const itype_id &what, int qty, const int
     }
     if( qty > 0 ) {
         visit_items( [this, &what, &qty, &res, &del, &filter]( item * e, item * ) {
-            if( e->use_charges( what, qty, res, pos(), filter ) ) {
+            if( e->use_charges( what, qty, res, pos(), filter, this ) ) {
                 del.push_back( e );
             }
             return qty > 0 ? VisitResponse::NEXT : VisitResponse::ABORT;
@@ -11542,16 +11582,7 @@ item Character::find_firestarter_with_charges( const int quantity ) const
             return *i;
         }
     }
-    for( const auto &bio : *this->my_bionics ) {
-        const bionic_data &bid = bio.info();
-        if( bid.fake_item.is_valid() && ( !bid.has_flag( json_flag_BIONIC_TOGGLED ) || ( !bid.activated ||
-                                          bio.powered ) )  && get_power_level() > quantity * 5_kJ ) {
-            item fake( bid.fake_item );
-            if( !fake.is_null() && bid.fake_item->has_flag( flag_FIRESTARTER ) ) {
-                return fake;
-            }
-        }
-    }
+
     return item();
 }
 
@@ -11814,19 +11845,25 @@ void Character::on_stat_change( const std::string &stat, int value )
 
 bool Character::has_opposite_trait( const trait_id &flag ) const
 {
+    return !get_opposite_traits( flag ).empty();
+}
+
+std::unordered_set<trait_id> Character::get_opposite_traits( const trait_id &flag ) const
+{
+    std::unordered_set<trait_id> traits;
     for( const trait_id &i : flag->cancels ) {
         if( has_trait( i ) ) {
-            return true;
+            traits.insert( i );
         }
     }
     for( const std::pair<const trait_id, trait_data> &mut : my_mutations ) {
         for( const trait_id &canceled_trait : mut.first->cancels ) {
             if( canceled_trait == flag ) {
-                return true;
+                traits.insert( mut.first );
             }
         }
     }
-    return false;
+    return traits;
 }
 
 int Character::adjust_for_focus( int amount ) const
@@ -11948,6 +11985,8 @@ int Character::limb_health_movecost_modifier() const
             if( cur_leg > leg_hi ) {
                 leg_lo = leg_hi;
                 leg_hi = cur_leg;
+            } else if( cur_leg > leg_lo ) {
+                leg_lo = cur_leg;
             }
         }
         if( leg_hi == 1.0f && leg_lo == 1.0f ) {
@@ -12300,7 +12339,9 @@ std::vector<std::string> Character::short_description_parts() const
     if( is_armed() ) {
         result.push_back( _( "Wielding: " ) + weapon.tname() );
     }
-    const std::string worn_str = enumerate_as_string( worn.begin(), worn.end(),
+    const std::list<item> visible_worn_items = get_visible_worn_items();
+    const std::string worn_str = enumerate_as_string( visible_worn_items.begin(),
+                                 visible_worn_items.end(),
     []( const item & it ) {
         return it.tname();
     } );
@@ -12968,13 +13009,17 @@ std::vector<display_proficiency> Character::display_proficiencies() const
 void Character::practice_proficiency( const proficiency_id &prof, const time_duration &amount,
                                       const cata::optional<time_duration> &max )
 {
-    int amt = to_seconds<int>( amount );
+    // Proficiencies can ignore focus using the `ignore_focus` JSON property
+    const bool ignore_focus = prof->ignore_focus();
+    const time_duration &focused_amount = ignore_focus ? amount : time_duration::from_seconds(
+            adjust_for_focus( to_seconds<int>( amount ) ) / 100 );
+
     const float pct_before = _proficiencies->pct_practiced( prof );
-    time_duration focused_amount = time_duration::from_seconds( adjust_for_focus( amt ) / 100 );
     const bool learned = _proficiencies->practice( prof, focused_amount, max );
     const float pct_after = _proficiencies->pct_practiced( prof );
 
-    if( pct_after > pct_before ) {
+    // Drain focus if necessary
+    if( !ignore_focus && pct_after > pct_before ) {
         focus_pool -= focus_pool / 100;
     }
 
@@ -13028,7 +13073,8 @@ bool Character::defer_move( const tripoint &next )
     return true;
 }
 
-bool Character::add_or_drop_with_msg( item &it, const bool /*unloading*/, const item *avoid )
+bool Character::add_or_drop_with_msg( item &it, const bool /*unloading*/, const item *avoid,
+                                      const item *original_inventory_item )
 {
     if( it.made_of( phase_id::LIQUID ) ) {
         liquid_handler::consume_liquid( it, 1, avoid );
@@ -13050,7 +13096,8 @@ bool Character::add_or_drop_with_msg( item &it, const bool /*unloading*/, const 
         }
         const bool allow_wield = !wielded_has_it && weapon.magazine_current() != &it;
         const int prev_charges = it.charges;
-        auto &ni = this->i_add( it, true, avoid, /*allow_drop=*/false, /*allow_wield=*/allow_wield );
+        auto &ni = this->i_add( it, true, avoid,
+                                original_inventory_item, /*allow_drop=*/false, /*allow_wield=*/allow_wield );
         if( ni.is_null() ) {
             // failed to add
             put_into_vehicle_or_drop( *this, item_drop_reason::tumbling, { it } );
@@ -13168,7 +13215,8 @@ bool Character::unload( item_location &loc, bool bypass_activity )
         return true;
 
     } else if( target->magazine_current() ) {
-        if( !this->add_or_drop_with_msg( *target->magazine_current(), true ) ) {
+        if( !this->add_or_drop_with_msg( *target->magazine_current(), true, nullptr,
+                                         target->magazine_current() ) ) {
             return false;
         }
         // Eject magazine consuming half as much time as required to insert it
@@ -13407,6 +13455,11 @@ time_duration Character::estimate_effect_dur( const skill_id &relevant_skill,
     return estimate;
 }
 
+void Character::invalidate_pseudo_items()
+{
+    pseudo_items_valid = false;
+}
+
 bool Character::avoid_trap( const tripoint &pos, const trap &tr ) const
 {
     /** @EFFECT_DEX increases chance to avoid traps */
@@ -13617,4 +13670,614 @@ int Character::time_to_read( const item &book, const Character &reader,
         retval /= 10;
     }
     return retval;
+}
+
+int Character::thirst_speed_penalty( int thirst )
+{
+    // We die at 1200 thirst
+    // Start by dropping speed really fast, but then level it off a bit
+    static const std::vector<std::pair<float, float>> thirst_thresholds = {{
+            std::make_pair( 40.0f, 0.0f ),
+            std::make_pair( 300.0f, -25.0f ),
+            std::make_pair( 600.0f, -50.0f ),
+            std::make_pair( 1200.0f, -75.0f )
+        }
+    };
+    return static_cast<int>( multi_lerp( thirst_thresholds, thirst ) );
+}
+
+void Character::recalc_speed_bonus()
+{
+    // Minus some for weight...
+    int carry_penalty = 0;
+    units::mass weight_cap = weight_capacity();
+    if( weight_cap < 1_milligram ) {
+        weight_cap = 1_milligram; //Prevent Clang warning about divide by zero
+    }
+    if( weight_carried() > weight_cap ) {
+        carry_penalty = 25 * ( weight_carried() - weight_cap ) / ( weight_cap );
+    }
+    mod_speed_bonus( -carry_penalty );
+
+    mod_speed_bonus( -get_pain_penalty().speed );
+
+    if( get_thirst() > 40 ) {
+        mod_speed_bonus( thirst_speed_penalty( get_thirst() ) );
+    }
+    // when underweight, you get slower. cumulative with hunger
+    mod_speed_bonus( kcal_speed_penalty() );
+
+    for( const auto &maps : *effects ) {
+        for( const auto &i : maps.second ) {
+            bool reduced = resists_effect( i.second );
+            mod_speed_bonus( i.second.get_mod( "SPEED", reduced ) );
+        }
+    }
+
+    // add martial arts speed bonus
+    mod_speed_bonus( mabuff_speed_bonus() );
+
+    // Not sure why Sunlight Dependent is here, but OK
+    // Ectothermic/COLDBLOOD4 is intended to buff folks in the Summer
+    // Threshold-crossing has its charms ;-)
+    if( g != nullptr ) {
+        if( has_trait( trait_SUNLIGHT_DEPENDENT ) && !g->is_in_sunlight( pos() ) ) {
+            mod_speed_bonus( -( g->light_level( posz() ) >= 12 ? 5 : 10 ) );
+        }
+        const float temperature_speed_modifier = mutation_value( "temperature_speed_modifier" );
+        if( temperature_speed_modifier != 0 ) {
+            const int player_local_temp = get_weather().get_temperature( pos() );
+            if( has_trait( trait_COLDBLOOD4 ) || player_local_temp < 65 ) {
+                mod_speed_bonus( ( player_local_temp - 65 ) * temperature_speed_modifier );
+            }
+        }
+    }
+    const int prev_speed_bonus = get_speed_bonus();
+    set_speed_bonus( std::round( enchantment_cache->modify_value( enchant_vals::mod::SPEED,
+                                 get_speed() ) - get_speed_base() ) );
+    enchantment_speed_bonus = get_speed_bonus() - prev_speed_bonus;
+    // Speed cannot be less than 25% of base speed, so minimal speed bonus is -75% base speed.
+    const int min_speed_bonus = static_cast<int>( -0.75 * get_speed_base() );
+    if( get_speed_bonus() < min_speed_bonus ) {
+        set_speed_bonus( min_speed_bonus );
+    }
+}
+
+double Character::recoil_vehicle() const
+{
+    // TODO: vary penalty dependent upon vehicle part on which player is boarded
+
+    if( in_vehicle ) {
+        if( const optional_vpart_position vp = get_map().veh_at( pos() ) ) {
+            return static_cast<double>( std::abs( vp->vehicle().velocity ) ) * 3 / 100;
+        }
+    }
+    return 0;
+}
+
+double Character::recoil_total() const
+{
+    return recoil + recoil_vehicle();
+}
+
+bool Character::is_hallucination() const
+{
+    return false;
+}
+
+void Character::set_underwater( bool u )
+{
+    if( underwater != u ) {
+        underwater = u;
+        recalc_sight_limits();
+    }
+}
+
+stat_mod Character::get_pain_penalty() const
+{
+    stat_mod ret;
+    int pain = get_perceived_pain();
+    if( pain <= 0 ) {
+        return ret;
+    }
+
+    int stat_penalty = std::floor( std::pow( pain, 0.8f ) / 10.0f );
+
+    bool ceno = has_trait( trait_CENOBITE );
+    if( !ceno ) {
+        ret.strength = stat_penalty;
+        ret.dexterity = stat_penalty;
+    }
+
+    if( !has_trait( trait_INT_SLIME ) ) {
+        ret.intelligence = stat_penalty;
+    } else {
+        ret.intelligence = pain / 5;
+    }
+
+    ret.perception = stat_penalty * 2 / 3;
+
+    ret.speed = std::pow( pain, 0.7f );
+    if( ceno ) {
+        ret.speed /= 2;
+    }
+
+    ret.speed = std::min( ret.speed, 50 );
+    return ret;
+}
+
+std::list<item *> Character::get_radio_items()
+{
+    std::list<item *> rc_items;
+    const invslice &stacks = inv->slice();
+    for( const auto &stack : stacks ) {
+        item &stack_iter = stack->front();
+        if( stack_iter.has_flag( flag_RADIO_ACTIVATION ) ) {
+            rc_items.push_back( &stack_iter );
+        }
+    }
+
+    for( auto &elem : worn ) {
+        if( elem.has_flag( flag_RADIO_ACTIVATION ) ) {
+            rc_items.push_back( &elem );
+        }
+    }
+
+    if( is_armed() ) {
+        if( weapon.has_flag( flag_RADIO_ACTIVATION ) ) {
+            rc_items.push_back( &weapon );
+        }
+    }
+    return rc_items;
+}
+
+int Character::get_lift_str() const
+{
+    int str = get_str();
+    if( has_trait( trait_id( "STRONGBACK" ) ) ) {
+        str *= 1.35;
+    } else if( has_trait( trait_id( "BADBACK" ) ) ) {
+        str /= 1.35;
+    }
+    return str;
+}
+
+ret_val<bool> Character::can_takeoff( const item &it, const std::list<item> *res )
+{
+    auto iter = std::find_if( worn.begin(), worn.end(), [ &it ]( const item & wit ) {
+        return &it == &wit;
+    } );
+
+    if( iter == worn.end() ) {
+        return ret_val<bool>::make_failure( !is_npc() ? _( "You are not wearing that item." ) :
+                                            _( "<npcname> is not wearing that item." ) );
+    }
+
+    if( res == nullptr && !get_dependent_worn_items( it ).empty() ) {
+        return ret_val<bool>::make_failure( !is_npc() ?
+                                            _( "You can't take off power armor while wearing other power armor components." ) :
+                                            _( "<npcname> can't take off power armor while wearing other power armor components." ) );
+    }
+    if( it.has_flag( flag_NO_TAKEOFF ) ) {
+        return ret_val<bool>::make_failure( !is_npc() ?
+                                            _( "You can't take that item off." ) :
+                                            _( "<npcname> can't take that item off." ) );
+    }
+    return ret_val<bool>::make_success();
+}
+
+std::pair<int, int> Character::gunmod_installation_odds( const item &gun, const item &mod ) const
+{
+    // Mods with INSTALL_DIFFICULT have a chance to fail, potentially damaging the gun
+    if( !mod.has_flag( flag_INSTALL_DIFFICULT ) || has_trait( trait_DEBUG_HS ) ) {
+        return std::make_pair( 100, 0 );
+    }
+
+    int roll = 100; // chance of success (%)
+    int risk = 0;   // chance of failure (%)
+    int chances = 1; // start with 1 in 6 (~17% chance)
+
+    for( const auto &e : mod.type->min_skills ) {
+        // gain an additional chance for every level above the minimum requirement
+        skill_id sk = e.first.str() == "weapon" ? gun.gun_skill() : e.first;
+        chances += std::max( get_skill_level( sk ) - e.second, 0 );
+    }
+    // cap success from skill alone to 1 in 5 (~83% chance)
+    roll = std::min( static_cast<double>( chances ), 5.0 ) / 6.0 * 100;
+    // focus is either a penalty or bonus of at most +/-10%
+    roll += ( std::min( std::max( get_focus(), 140 ), 60 ) - 100 ) / 4;
+    // dexterity and intelligence give +/-2% for each point above or below 12
+    roll += ( get_dex() - 12 ) * 2;
+    roll += ( get_int() - 12 ) * 2;
+    // each level of damage to the base gun reduces success by 10%
+    roll -= std::max( gun.damage_level(), 0 ) * 10;
+    roll = std::min( std::max( roll, 0 ), 100 );
+
+    // risk of causing damage on failure increases with less durable guns
+    risk = ( 100 - roll ) * ( ( 10.0 - std::min( gun.type->gun->durability, 9 ) ) / 10.0 );
+
+    return std::make_pair( roll, risk );
+}
+
+int Character::get_lift_assist() const
+{
+    int result = 0;
+    const std::vector<npc *> helpers = get_crafting_helpers();
+    for( const npc *np : helpers ) {
+        result += np->get_str();
+    }
+    return result;
+}
+
+bool Character::immune_to( const bodypart_id &bp, damage_unit dam ) const
+{
+    if( has_trait( trait_DEBUG_NODMG ) || is_immune_damage( dam.type ) ||
+        has_effect( effect_incorporeal ) ) {
+        return true;
+    }
+
+    passive_absorb_hit( bp, dam );
+
+    for( const item &cloth : worn ) {
+        if( cloth.get_coverage( bp ) == 100 && cloth.covers( bp ) ) {
+            cloth.mitigate_damage( dam );
+        }
+    }
+
+    return dam.amount <= 0;
+}
+
+void Character::mod_pain( int npain )
+{
+    if( npain > 0 ) {
+        if( has_trait( trait_NOPAIN ) || has_effect( effect_narcosis ) ) {
+            return;
+        }
+        // always increase pain gained by one from these bad mutations
+        if( has_trait( trait_MORE_PAIN ) ) {
+            npain += std::max( 1, roll_remainder( npain * 0.25 ) );
+        } else if( has_trait( trait_MORE_PAIN2 ) ) {
+            npain += std::max( 1, roll_remainder( npain * 0.5 ) );
+        } else if( has_trait( trait_MORE_PAIN3 ) ) {
+            npain += std::max( 1, roll_remainder( npain * 1.0 ) );
+        }
+
+        if( npain > 1 ) {
+            // if it's 1 it'll just become 0, which is bad
+            if( has_trait( trait_PAINRESIST_TROGLO ) ) {
+                npain = roll_remainder( npain * 0.5 );
+            } else if( has_trait( trait_PAINRESIST ) ) {
+                npain = roll_remainder( npain * 0.67 );
+            }
+        }
+    }
+    Creature::mod_pain( npain );
+}
+
+void Character::set_pain( int npain )
+{
+    const int prev_pain = get_perceived_pain();
+    Creature::set_pain( npain );
+    const int cur_pain = get_perceived_pain();
+
+    if( cur_pain != prev_pain ) {
+        react_to_felt_pain( cur_pain - prev_pain );
+        on_stat_change( "perceived_pain", cur_pain );
+    }
+}
+
+int Character::get_perceived_pain() const
+{
+    if( get_effect_int( effect_adrenaline ) > 1 ) {
+        return 0;
+    }
+
+    return std::max( get_pain() - get_painkiller(), 0 );
+}
+
+float Character::fall_damage_mod() const
+{
+    if( has_flag( json_flag_FEATHER_FALL ) ) {
+        return 0.0f;
+    }
+    float ret = 1.0f;
+
+    // Ability to land properly is 2x as important as dexterity itself
+    /** @EFFECT_DEX decreases damage from falling */
+
+    /** @EFFECT_DODGE decreases damage from falling */
+    float dex_dodge = dex_cur / 2.0 + get_skill_level( skill_dodge );
+    // Penalize for wearing heavy stuff
+    const float average_leg_encumb = ( encumb( bodypart_id( "leg_l" ) ) + encumb(
+                                           bodypart_id( "leg_r" ) ) ) / 2.0;
+    dex_dodge -= ( average_leg_encumb + encumb( bodypart_id( "torso" ) ) ) / 10;
+    // But prevent it from increasing damage
+    dex_dodge = std::max( 0.0f, dex_dodge );
+    // 100% damage at 0, 75% at 10, 50% at 20 and so on
+    ret *= ( 100.0f - ( dex_dodge * 4.0f ) ) / 100.0f;
+
+    if( has_trait( trait_PARKOUR ) ) {
+        ret *= 2.0f / 3.0f;
+    }
+
+    // TODO: Bonus for Judo, mutations. Penalty for heavy weight (including mutations)
+    return std::max( 0.0f, ret );
+}
+
+// force is maximum damage to hp before scaling
+int Character::impact( const int force, const tripoint &p )
+{
+    // Falls over ~30m are fatal more often than not
+    // But that would be quite a lot considering 21 z-levels in game
+    // so let's assume 1 z-level is comparable to 30 force
+
+    if( force <= 0 ) {
+        return force;
+    }
+
+    // Damage modifier (post armor)
+    float mod = 1.0f;
+    int effective_force = force;
+    int cut = 0;
+    // Percentage armor penetration - armor won't help much here
+    // TODO: Make cushioned items like bike helmets help more
+    float armor_eff = 1.0f;
+    // Shock Absorber CBM heavily reduces damage
+    const bool shock_absorbers = has_active_bionic( bionic_id( "bio_shock_absorber" ) );
+
+    // Being slammed against things rather than landing means we can't
+    // control the impact as well
+    const bool slam = p != pos();
+    std::string target_name = "a swarm of bugs";
+    Creature *critter = g->critter_at( p );
+    map &here = get_map();
+    if( critter != this && critter != nullptr ) {
+        target_name = critter->disp_name();
+        // Slamming into creatures and NPCs
+        // TODO: Handle spikes/horns and hard materials
+        armor_eff = 0.5f; // 2x as much as with the ground
+        // TODO: Modify based on something?
+        mod = 1.0f;
+        effective_force = force;
+    } else if( const optional_vpart_position vp = here.veh_at( p ) ) {
+        // Slamming into vehicles
+        // TODO: Integrate it with vehicle collision function somehow
+        target_name = vp->vehicle().disp_name();
+        if( vp.part_with_feature( "SHARP", true ) ) {
+            // Now we're actually getting impaled
+            cut = force; // Lots of fun
+        }
+
+        mod = slam ? 1.0f : fall_damage_mod();
+        armor_eff = 0.25f; // Not much
+        if( !slam && vp->part_with_feature( "ROOF", true ) ) {
+            // Roof offers better landing than frame or pavement
+            // TODO: Make this not happen with heavy duty/plated roof
+            effective_force /= 2;
+        }
+    } else {
+        // Slamming into terrain/furniture
+        target_name = here.disp_name( p );
+        int hard_ground = here.has_flag( TFLAG_DIGGABLE, p ) ? 0 : 3;
+        armor_eff = 0.25f; // Not much
+        // Get cut by stuff
+        // This isn't impalement on metal wreckage, more like flying through a closed window
+        cut = here.has_flag( TFLAG_SHARP, p ) ? 5 : 0;
+        effective_force = force + hard_ground;
+        mod = slam ? 1.0f : fall_damage_mod();
+        if( here.has_furn( p ) ) {
+            // TODO: Make furniture matter
+        } else if( here.has_flag( TFLAG_SWIMMABLE, p ) ) {
+            const int swim_skill = get_skill_level( skill_swimming );
+            effective_force /= 4.0f + 0.1f * swim_skill;
+            if( here.has_flag( TFLAG_DEEP_WATER, p ) ) {
+                effective_force /= 1.5f;
+                mod /= 1.0f + ( 0.1f * swim_skill );
+            }
+        }
+    }
+
+    // Rescale for huge force
+    // At >30 force, proper landing is impossible and armor helps way less
+    if( effective_force > 30 ) {
+        // Armor simply helps way less
+        armor_eff *= 30.0f / effective_force;
+        if( mod < 1.0f ) {
+            // Everything past 30 damage gets a worse modifier
+            const float scaled_mod = std::pow( mod, 30.0f / effective_force );
+            const float scaled_damage = ( 30.0f * mod ) + scaled_mod * ( effective_force - 30.0f );
+            mod = scaled_damage / effective_force;
+        }
+    }
+
+    if( !slam && mod < 1.0f && mod * force < 5 ) {
+        // Perfect landing, no damage (regardless of armor)
+        add_msg_if_player( m_warning, _( "You land on %s." ), target_name );
+        return 0;
+    }
+
+    // Shock absorbers kick in only when they need to, so if our other protections fail, fall back on them
+    if( shock_absorbers ) {
+        effective_force -= 15; // Provide a flat reduction to force
+        if( mod > 0.25f ) {
+            mod = 0.25f; // And provide a 75% reduction against that force if we don't have it already
+        }
+        if( effective_force < 0 ) {
+            effective_force = 0;
+        }
+    }
+
+    int total_dealt = 0;
+    if( mod * effective_force >= 5 ) {
+        for( const bodypart_id &bp : get_all_body_parts( get_body_part_flags::only_main ) ) {
+            const int bash = effective_force * rng( 60, 100 ) / 100;
+            damage_instance di;
+            di.add_damage( damage_type::BASH, bash, 0, armor_eff, mod );
+            // No good way to land on sharp stuff, so here modifier == 1.0f
+            di.add_damage( damage_type::CUT, cut, 0, armor_eff, 1.0f );
+            total_dealt += deal_damage( nullptr, bp, di ).total_damage();
+        }
+    }
+
+    if( total_dealt > 0 && is_avatar() ) {
+        // "You slam against the dirt" is fine
+        add_msg( m_bad, _( "You are slammed against %1$s for %2$d damage." ),
+                 target_name, total_dealt );
+    } else if( is_avatar() && shock_absorbers ) {
+        add_msg( m_bad, _( "You are slammed against %s!" ),
+                 target_name, total_dealt );
+        add_msg( m_good, _( "…but your shock absorbers negate the damage!" ) );
+    } else if( slam ) {
+        // Only print this line if it is a slam and not a landing
+        // Non-players should only get this one: player doesn't know how much damage was dealt
+        // and landing messages for each slammed creature would be too much
+        add_msg_player_or_npc( m_bad,
+                               _( "You are slammed against %s." ),
+                               _( "<npcname> is slammed against %s." ),
+                               target_name );
+    } else {
+        // No landing message for NPCs
+        add_msg_if_player( m_warning, _( "You land on %s." ), target_name );
+    }
+
+    if( x_in_y( mod, 1.0f ) ) {
+        add_effect( effect_downed, rng( 1_turns, 1_turns + mod * 3_turns ) );
+    }
+
+    return total_dealt;
+}
+
+void Character::knock_back_to( const tripoint &to )
+{
+    if( to == pos() ) {
+        return;
+    }
+
+    // First, see if we hit a monster
+    if( monster *const critter = g->critter_at<monster>( to ) ) {
+        deal_damage( critter, bodypart_id( "torso" ), damage_instance( damage_type::BASH,
+                     static_cast<float>( critter->type->size ) ) );
+        add_effect( effect_stunned, 1_turns );
+        /** @EFFECT_STR_MAX allows knocked back player to knock back, damage, stun some monsters */
+        if( ( str_max - 6 ) / 4 > critter->type->size ) {
+            critter->knock_back_from( pos() ); // Chain reaction!
+            critter->apply_damage( this, bodypart_id( "torso" ), ( str_max - 6 ) / 4 );
+            critter->add_effect( effect_stunned, 1_turns );
+        } else if( ( str_max - 6 ) / 4 == critter->type->size ) {
+            critter->apply_damage( this, bodypart_id( "torso" ), ( str_max - 6 ) / 4 );
+            critter->add_effect( effect_stunned, 1_turns );
+        }
+        critter->check_dead_state();
+
+        add_msg_player_or_npc( _( "You bounce off a %s!" ), _( "<npcname> bounces off a %s!" ),
+                               critter->name() );
+        return;
+    }
+
+    if( npc *const np = g->critter_at<npc>( to ) ) {
+        deal_damage( np, bodypart_id( "torso" ),
+                     damage_instance( damage_type::BASH, static_cast<float>( np->get_size() ) ) );
+        add_effect( effect_stunned, 1_turns );
+        np->deal_damage( this, bodypart_id( "torso" ), damage_instance( damage_type::BASH, 3 ) );
+        add_msg_player_or_npc( _( "You bounce off %s!" ), _( "<npcname> bounces off %s!" ),
+                               np->name );
+        np->check_dead_state();
+        return;
+    }
+
+    map &here = get_map();
+    // If we're still in the function at this point, we're actually moving a tile!
+    if( here.has_flag( "LIQUID", to ) && here.has_flag( TFLAG_DEEP_WATER, to ) ) {
+        if( !is_npc() ) {
+            avatar_action::swim( here, get_avatar(), to );
+        }
+        // TODO: NPCs can't swim!
+    } else if( here.impassable( to ) ) { // Wait, it's a wall
+
+        // It's some kind of wall.
+        // TODO: who knocked us back? Maybe that creature should be the source of the damage?
+        apply_damage( nullptr, bodypart_id( "torso" ), 3 );
+        add_effect( effect_stunned, 2_turns );
+        add_msg_player_or_npc( _( "You bounce off a %s!" ), _( "<npcname> bounces off a %s!" ),
+                               here.obstacle_name( to ) );
+
+    } else { // It's no wall
+        setpos( to );
+    }
+}
+
+int Character::hp_percentage() const
+{
+    const bodypart_id head_id = bodypart_id( "head" );
+    const bodypart_id torso_id = bodypart_id( "torso" );
+    int total_cur = 0;
+    int total_max = 0;
+    // Head and torso HP are weighted 3x and 2x, respectively
+    total_cur = get_part_hp_cur( head_id ) * 3 + get_part_hp_cur( torso_id ) * 2;
+    total_max = get_part_hp_max( head_id ) * 3 + get_part_hp_max( torso_id ) * 2;
+    for( const std::pair< const bodypart_str_id, bodypart> &elem : get_body() ) {
+        total_cur += elem.second.get_hp_cur();
+        total_max += elem.second.get_hp_max();
+    }
+
+    return ( 100 * total_cur ) / total_max;
+}
+
+void Character::siphon( vehicle &veh, const itype_id &desired_liquid )
+{
+    int qty = veh.fuel_left( desired_liquid );
+    if( qty <= 0 ) {
+        add_msg( m_bad, _( "There is not enough %s left to siphon it." ),
+                 item::nname( desired_liquid ) );
+        return;
+    }
+
+    item liquid( desired_liquid, calendar::turn, qty );
+    if( liquid.has_temperature() ) {
+        liquid.set_item_specific_energy( veh.fuel_specific_energy( desired_liquid ) );
+    }
+    if( liquid_handler::handle_liquid( liquid, nullptr, 1, nullptr, &veh ) ) {
+        veh.drain( desired_liquid, qty - liquid.charges );
+    }
+}
+
+bool Character::takeoff( item_location loc, std::list<item> *res )
+{
+    item &it = *loc;
+
+
+    const auto ret = can_takeoff( it, res );
+    if( !ret.success() ) {
+        add_msg( m_info, "%s", ret.c_str() );
+        return false;
+    }
+
+    auto iter = std::find_if( worn.begin(), worn.end(), [ &it ]( const item & wit ) {
+        return &it == &wit;
+    } );
+
+    item takeoff_copy( it );
+    worn.erase( iter );
+    takeoff_copy.on_takeoff( *this );
+    if( res == nullptr ) {
+        i_add( takeoff_copy, true, &it, &it, true, !has_weapon() );
+    } else {
+        res->push_back( takeoff_copy );
+    }
+
+    add_msg_player_or_npc( _( "You take off your %s." ),
+                           _( "<npcname> takes off their %s." ),
+                           takeoff_copy.tname() );
+
+
+    recalc_sight_limits();
+    calc_encumbrance();
+
+    return true;
+}
+
+bool Character::takeoff( int pos )
+{
+    item_location loc = item_location( *this, &i_at( pos ) );
+    return takeoff( loc );
 }
